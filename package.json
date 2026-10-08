@@ -1,0 +1,35 @@
+{
+  "name": "clp-health-intelligence",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "test": "node --test --import tsx tests/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "build:ui": "node scripts/build-ui.mjs",
+    "harness": "tsx harness/server.ts",
+    "dev:http": "node --env-file-if-exists=.env --import tsx --watch src/http.ts",
+    "start:http": "node --env-file-if-exists=.env --import tsx src/http.ts",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "start": "node --env-file-if-exists=.env dist/http.js",
+    "start:stdio": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@modelcontextprotocol/core": "^2.3.1",
+    "@modelcontextprotocol/ext-apps": "^2.0.3",
+    "@modelcontextprotocol/node": "^2.1.1",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "esbuild": "^0.28.2",
+    "tsx": "latest",
+    "typescript": "latest"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
