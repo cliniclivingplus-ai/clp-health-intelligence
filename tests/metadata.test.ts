@@ -65,18 +65,26 @@ test("parameter descriptions carry required / do-not-guess / do-not-convert guid
   has(props.age.description, "do not guess");
   has(props.sex.description, "do not guess");
   has(props.creatinine.description, "do not convert");
-  has(props.creatinineUnit.description, "do not convert");
-  has(props.creatinineUnit.description, "stated");
+  has(props.creatinineUnit.description, "Required");
+  has(props.creatinineUnit.description, "exactly as provided by the user");
+  has(props.creatinineUnit.description, "Do not convert the value yourself");
 });
 
-test("input contract is unchanged: adults only, required fields, unit enum", async () => {
+test("input contract: adults only, creatinineUnit is required with no default", async () => {
   const schema = (await rpc("tools/list")).result.tools[0].inputSchema;
   assert.equal(schema.properties.age.minimum, 18);
   assert.equal(schema.properties.age.maximum, 120);
-  assert.deepEqual(schema.required, ["age", "sex", "creatinine"]);
+  assert.deepEqual(schema.required, ["age", "sex", "creatinine", "creatinineUnit"]);
   assert.deepEqual(schema.properties.sex.enum, ["male", "female"]);
   assert.deepEqual(schema.properties.creatinineUnit.enum, ["mg/dL", "umol/L"]);
-  assert.equal(schema.properties.creatinineUnit.default, "mg/dL");
+  assert.equal("default" in schema.properties.creatinineUnit, false, "no default unit is exposed");
+});
+
+test("a call without creatinineUnit is rejected and never calculates", async () => {
+  const res = (await rpc("tools/call", { name: "calculate_egfr", arguments: { age: 45, sex: "male", creatinine: 1.5 } })).result;
+  assert.equal(res.isError, true);
+  assert.equal(res.structuredContent, undefined);
+  assert.match(res.content[0].text, /creatinineUnit/);
 });
 
 test("annotations: read-only, idempotent, closed world; UI link intact", async () => {

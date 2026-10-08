@@ -79,10 +79,11 @@ test("calculate_egfr over HTTP: 132.6 umol/L -> 58 / G3a", async () => {
 test("age 17 returns an MCP validation error and no calculation result", async () => {
   const client = await connectClient(s.base);
   try {
-    const res: any = await client.callTool({ name: "calculate_egfr", arguments: { age: 17, sex: "male", creatinine: 1.5 } });
+    const res: any = await client.callTool({ name: "calculate_egfr", arguments: { age: 17, sex: "male", creatinine: 1.5, creatinineUnit: "mg/dL" } });
     assert.equal(res.isError, true);
     assert.equal(res.structuredContent, undefined);
     assert.match(res.content[0].text, /validation/i);
+    assert.match(res.content[0].text, /age/i, "rejected because of age, not a missing field");
   } finally { await client.close(); }
 });
 
@@ -140,8 +141,8 @@ test("stateless: no session id is issued, and two independent clients both work"
   const [a, b] = await Promise.all([connectClient(s.base), connectClient(s.base)]);
   try {
     const [ra, rb]: any[] = await Promise.all([
-      a.callTool({ name: "calculate_egfr", arguments: { age: 45, sex: "male", creatinine: 1.5 } }),
-      b.callTool({ name: "calculate_egfr", arguments: { age: 45, sex: "female", creatinine: 1.5 } })
+      a.callTool({ name: "calculate_egfr", arguments: { age: 45, sex: "male", creatinine: 1.5, creatinineUnit: "mg/dL" } }),
+      b.callTool({ name: "calculate_egfr", arguments: { age: 45, sex: "female", creatinine: 1.5, creatinineUnit: "mg/dL" } })
     ]);
     assert.equal(ra.structuredContent.egfr, 58);
     assert.equal(rb.structuredContent.egfr, 44);

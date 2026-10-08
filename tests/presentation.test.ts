@@ -66,7 +66,7 @@ test("MCP stdio: tool is linked to its UI resource and the resource is readable"
     assert.equal(content.mimeType, "text/html;profile=mcp-app");
     assert.ok(content.text.includes("CLP Health Intelligence"));
 
-    send({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "calculate_egfr", arguments: { age: 45, sex: "male", creatinine: 1.5 } } });
+    send({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "calculate_egfr", arguments: { age: 45, sex: "male", creatinine: 1.5, creatinineUnit: "mg/dL" } } });
     const out = (await waitFor(4)).result.structuredContent;
     assert.equal(out.egfr, 58);
     assert.equal(out.cta.show, true);

@@ -28,5 +28,5 @@ export const EGFR_PARAM_DESCRIPTIONS = {
   age: "Required. Age in years (adults 18 to 120). Ask the user if it was not stated; do not guess.",
   sex: "Required. \"male\" or \"female\", as used by the 2021 CKD-EPI creatinine equation. Ask the user if it was not stated; do not guess.",
   creatinine: "Required. Serum creatinine exactly as the user stated it, in the unit given by creatinineUnit (mg/dL up to 50, umol/L up to 4420). Do not convert it yourself.",
-  creatinineUnit: "Unit of the creatinine value: \"mg/dL\" or \"umol/L\" (µmol/L). Pass the unit the user stated and do not convert; if the unit is unclear, ask the user."
+  creatinineUnit: "Required. The unit of the serum creatinine value exactly as provided by the user. Use mg/dL for mg/dL or umol/L for µmol/L. Do not convert the value yourself."
 } as const;
