@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { getConsultationUrl } from "./config.js";
+import { EGFR_TOOL_DESCRIPTION, SERVER_INSTRUCTIONS } from "./tools/egfr/metadata.js";
 import {
   calculateEgfr,
   egfrInputSchema,
@@ -10,10 +11,10 @@ import {
 } from "./tools/egfr/index.js";
 
 export function createServer() {
-  const server = new McpServer({
-    name: "clp-health-intelligence",
-    version: "0.3.0"
-  });
+  const server = new McpServer(
+    { name: "clp-health-intelligence", version: "0.3.0" },
+    { instructions: SERVER_INSTRUCTIONS }
+  );
 
   registerAppResource(
     server,
@@ -30,11 +31,12 @@ export function createServer() {
     "calculate_egfr",
     {
       title: "CLP eGFR Calculator",
-      description: "Calculate adult estimated glomerular filtration rate (eGFR) from age, sex, and serum creatinine using the 2021 race-free CKD-EPI creatinine equation. Use when a user provides these values or asks about kidney filtration. Do not use this tool to diagnose chronic kidney disease.",
+      description: EGFR_TOOL_DESCRIPTION,
       inputSchema: egfrInputSchema,
       outputSchema: egfrOutputSchema,
       annotations: {
         readOnlyHint: true,
+        idempotentHint: true,
         openWorldHint: false
       },
       _meta: {

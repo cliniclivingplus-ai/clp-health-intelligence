@@ -1,13 +1,14 @@
 import * as z from "zod/v4";
+import { EGFR_PARAM_DESCRIPTIONS as P } from "./metadata.js";
 
 const MAX_CREATININE_MG_DL = 50;
 const MAX_CREATININE_UMOL_L = 4420; // 50 mg/dL x 88.4
 
 export const egfrInputSchema = z.object({
-  age: z.number().int().min(18).max(120).describe("Age in years; adults 18 and older."),
-  sex: z.enum(["male", "female"]).describe("Sex used by the 2021 CKD-EPI creatinine equation."),
-  creatinine: z.number().positive().describe("Serum creatinine value in the unit given by creatinineUnit (mg/dL up to 50, umol/L up to 4420)."),
-  creatinineUnit: z.enum(["mg/dL", "umol/L"]).default("mg/dL").describe("Creatinine unit. Use mg/dL or umol/L.")
+  age: z.number().int().min(18).max(120).describe(P.age),
+  sex: z.enum(["male", "female"]).describe(P.sex),
+  creatinine: z.number().positive().describe(P.creatinine),
+  creatinineUnit: z.enum(["mg/dL", "umol/L"]).default("mg/dL").describe(P.creatinineUnit)
 }).refine(
   (v) => v.creatinine <= (v.creatinineUnit === "umol/L" ? MAX_CREATININE_UMOL_L : MAX_CREATININE_MG_DL),
   { message: "Creatinine is out of range for the selected unit.", path: ["creatinine"] }
