@@ -1,6 +1,7 @@
 // Minimal MCP Apps host for local verification. Uses the official AppBridge, hosts the card in a
 // sandboxed iframe (no allow-same-origin), and plays a real calculate_egfr result into it.
 import { AppBridge, PostMessageTransport } from "@modelcontextprotocol/ext-apps/app-bridge";
+import { extendedSamples } from "./samples.js";
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
 const logEl = $("log");
@@ -17,7 +18,15 @@ async function api(path: string, body?: unknown) {
 let bridge: AppBridge | undefined;
 
 async function run() {
-  const args = {
+  const name = ($("tool") as HTMLSelectElement).value;
+  const samples: Record<string, Record<string, unknown>> = {
+    ...extendedSamples,
+    calculate_bmi: { age: 35, weightKg: 70, heightCm: 170, isPregnant: false },
+    calculate_hba1c: { hba1cPercent: 7 },
+    calculate_idrs: { age: 45, sex: "male", waistCm: 92, regularExercise: true, strenuousWork: false,
+      parentsWithDiabetes: 1, knownDiabetes: false, isPregnant: false }
+  };
+  const args = samples[name] ?? {
     age: Number(($("age") as HTMLInputElement).value),
     sex: ($("sex") as HTMLSelectElement).value,
     creatinine: Number(($("creatinine") as HTMLInputElement).value),
@@ -29,9 +38,9 @@ async function run() {
 
   log("tools/list -> find tool UI link");
   const { tools } = await api("/api/tools");
-  const tool = tools.find((t: any) => t.name === "calculate_egfr");
+  const tool = tools.find((t: any) => t.name === name);
   const uri: string | undefined = tool?._meta?.ui?.resourceUri;
-  log("calculate_egfr _meta.ui.resourceUri = " + uri);
+  log(name + " _meta.ui.resourceUri = " + uri);
   if (!uri) { log("ERROR: tool has no UI resource link"); return; }
 
   log("resources/read " + uri);
@@ -39,9 +48,9 @@ async function run() {
   const content = resource.contents[0];
   log("resource mimeType = " + content.mimeType + ", " + content.text.length + " chars");
 
-  log("tools/call calculate_egfr " + JSON.stringify(args));
-  const result = await api("/api/call", { name: "calculate_egfr", arguments: args });
-  log("tool result egfr=" + result.structuredContent?.egfr + " category=" + result.structuredContent?.category);
+  log("tools/call " + name + " " + JSON.stringify(args));
+  const result = await api("/api/call", { name, arguments: args });
+  log("tool result value=" + (result.structuredContent?.displayValue ?? result.structuredContent?.egfr) + " category=" + result.structuredContent?.category);
 
   const iframe = document.createElement("iframe");
   // ?inspect=1 adds allow-same-origin so automated checks can read/click the card; default is fully sandboxed.

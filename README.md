@@ -1,5 +1,100 @@
 # CLP Health Intelligence
 
+## Eighteen health tools — live
+
+- Indian adult BMI: https://clp-health-intelligence.vercel.app/tool1 — `calculate_bmi`
+- HbA1c to estimated average glucose: https://clp-health-intelligence.vercel.app/tool2 — `calculate_hba1c`
+- Original Indian Diabetes Risk Score: https://clp-health-intelligence.vercel.app/tool3 — `calculate_idrs`
+- Calorie calculator: `/tool4` — `calculate_calories`
+- Ovulation calculator: `/tool5` — `calculate_ovulation`
+- Pregnancy due date: `/tool6` — `calculate_due_date`
+- FIB-4 liver score: `/tool7` — `calculate_fib4`
+- Metabolic syndrome: `/tool8` — `check_metabolic_syndrome`
+- Body fat: `/tool9` — `calculate_body_fat`
+- Waist-to-height ratio: `/tool10` — `calculate_waist_height`
+- Heart rate zones: `/tool11` — `calculate_heart_rate_zones`
+- Pack-year smoking: `/tool12` — `calculate_pack_years`
+- Burnout (CBI): `/tool13` — `assess_burnout`
+- Biological age (clinical PhenoAge): `/tool14` — `calculate_phenoage`
+- PCOS symptoms: `/tool15` — `check_pcos_symptoms`
+- Thyroid symptoms: `/tool16` — `check_thyroid_symptoms`
+- Gut symptoms: `/tool17` — `assess_gut_symptoms`
+- Medical weight-loss suitability screen: `/tool18` — `assess_weight_loss_medication`
+- Tool library: https://clp-health-intelligence.vercel.app/
+- Shared MCP endpoint (18 tools plus existing eGFR): https://clp-health-intelligence.vercel.app/mcp
+
+Website pages submit to `POST /api/calculate`. That API and the MCP server call the
+same input-validated functions through `src/tools/registry.ts`, with engines in
+`src/tools/metabolic.ts` and `src/tools/extended.ts`. Frontends render their results;
+they do not contain medical calculations. The optional BMI stage is a provisional
+2025 staging screen; missing clinical details do not produce a stage diagnosis.
+The IDRS uses the original 2005 exercise/work categories, not later variants.
+See [CLINICAL_METHODS.md](CLINICAL_METHODS.md) for sources, limits and pending clinical sign-off.
+
+Verification on 11 October 2026: 68 tests passed; local TypeScript and production build
+passed. All 18 tools were called through local HTTP MCP, compared against their
+website API outputs, and their MCP Apps resources read. Formula tests cover clinical
+boundaries, unit handling, age restrictions, date arithmetic and CBI reverse scoring.
+Browser checks include conditional IVF fields, CBI response arrays and PhenoAge inputs.
+All 18 tools and pages also passed the production smoke check with website/MCP parity
+and readable MCP Apps resources. Representative due-date, burnout, PhenoAge, PCOS
+and weight-loss cards rendered through the official AppBridge host connected to live MCP.
+The deployed library was checked at 1280px and 390px without horizontal overflow.
+This does not establish clinical validation or confirm a ChatGPT/Claude conversation integration.
+
+Symptom checkers provide guideline-based assessment prompts, not invented diagnostic
+scores or probabilities. The medicine screen compares an identified CDSCO semaglutide
+indication; it does not prescribe or certify suitability. PhenoAge is a research model
+with explicit printed coefficient precision and units, not a literal age or lifespan.
+
+`npm run build:ui` rebuilds both the existing eGFR card and new website/MCP card
+bundles. Run it after changing `ui-src/`. The harness's Tool selector offers synthetic
+examples for all tools. After changing sample fixtures, run `npm run build` then
+`node scripts/prepare-samples.mjs`. Use `MCP_URL` to drive a deployed endpoint.
+Source is in the private GitHub repository `cliniclivingplus-ai/clp-health-intelligence`;
+deployments to Vercel are made with the CLI (`vercel --prod`).
+
+## Vercel hosting
+
+Live and smoke-tested on 11 October 2026 at
+`https://clp-health-intelligence.vercel.app/mcp`, in the `cliniclivingplus` team.
+Deployment: `dpl_HBR88gBAjJCmaTcyriqoTvmCUBVd` (eighteen tools and pages, version 0.5.0).
+
+Vercel uses `api/index.ts`, which exports the shared HTTP application's request
+listener through a Node function. `vercel.json` explicitly selects `@vercel/node`
+and routes requests to it, preserving `/health` and `/mcp`. `src/http.ts` / `dist/http.js`
+remain as a generic Node entry point for local runs and self-hosting. The raw body stream is preserved so the shared
+handler remains responsible for body-size and JSON validation.
+
+Verified live: health, MCP discovery, both creatinine units, invalid age rejection,
+the MCP Apps UI resources and rejection of foreign Origins. Representative cards were
+visually checked in the AppBridge harness; actual AI conversation testing remains
+pending. Local TypeScript checks pass; the Vercel
+builder emitted a Node type-definition diagnostic during transpilation, but produced
+the working function. Build-tool compatibility should be reviewed on the next update.
+
+Exact Vercel deployment, branch and production hostnames are allowed automatically.
+For a custom domain, add it to `ALLOWED_HOSTS` and `ALLOWED_ORIGINS`. Exact platform
+hostnames are also allowed Origins so these calculator pages can call their own API;
+unrelated domains are rejected.
+
+The in-memory rate limiter is a per-instance safeguard, not a shared quota. With
+`TRUST_PROXY=false`, callers may share a bucket behind the platform proxy. Use a
+platform firewall or shared rate limiter before relying on global rate limiting.
+The consultation button remains disabled until `CLP_CONSULTATION_URL` is configured.
+
+Deploy from this directory to the `cliniclivingplus` team:
+
+```powershell
+vercel deploy --yes --prod --scope cliniclivingplus
+node scripts/smoke-remote.mjs https://your-production-host
+```
+
+Run `npm run build` before the smoke check. It uses synthetic values and verifies
+all 18 pages and tools, website/MCP parity, health, discovery, both creatinine units,
+invalid age rejection, result card resources and Origin protection.
+It does not verify visual rendering in an AI host.
+
 ## Milestone 1 — eGFR reference tool
 
 This repository is the foundation for **CLP Health Intelligence**, Clinic Living Plus's AI-callable health-tool platform.
@@ -123,7 +218,7 @@ npm run typecheck
 MCP_URL=http://127.0.0.1:3000/mcp npm run harness   # browser card host, driving the HTTP server
 ```
 
-## Production build and Render deployment (prepared, not yet deployed)
+## Production build and Vercel deployment
 
 > Proof of concept: no authentication, synthetic data only, no custom domain. Do not use with real patient data.
 
@@ -132,68 +227,57 @@ MCP_URL=http://127.0.0.1:3000/mcp npm run harness   # browser card host, driving
 ```bash
 npm ci --include=dev   # dev dependencies are needed only to compile
 npm run build          # tsc -> dist/
-npm start              # node dist/http.js  (HTTP: /health and /mcp)
+npm start              # node dist/http.js  (HTTP: /health and /mcp), for local or self-hosted runs
 npm run start:stdio    # compiled stdio server (node dist/index.js)
 ```
 
-Development commands are unchanged: `npm test`, `npm run typecheck`, `npm run dev:http`, `npm run start:http`, `npm run dev`.
-At runtime only production dependencies are required (verified with `npm ci --omit=dev`).
-`npm run build:ui` is only needed after editing `ui-src/`; the generated card is committed.
+Development commands: `npm test`, `npm run typecheck`, `npm run dev:http`, `npm run start:http`, `npm run dev`.
+`npm run build:ui` is only needed after editing `ui-src/`; the generated cards are committed.
 
-### Deploying to Render (manual steps; nothing here has been run)
+### Deploying to Vercel
 
-Render deploys from a Git repository, so first put the project in a **private** repository (see the pre-push checklist below).
+The project is linked to the Vercel project `clp-health-intelligence` (`.vercel/` is git-ignored).
 
-1. Render dashboard -> New -> Web Service (or Blueprint, using `render.yaml`) -> connect the private repository.
-2. Settings (already encoded in `render.yaml`):
-   - Runtime: Node. Environment variable `NODE_VERSION=24`.
-   - Build command: `npm ci --include=dev && npm run build`
-   - Start command: `npm start`
-   - Health check path: `/health`
-   - Instance type: **Starter** (the free tier idles and spins down, which can break a connector's first handshake).
-3. Environment variables:
+```bash
+npm test && npm run typecheck && npm run build   # all must pass first
+vercel --prod                                      # deploy to production
+```
 
-   | Variable | Value |
-   |---|---|
-   | `HOST` | `0.0.0.0` |
-   | `PORT` | provided by Render; do not set |
-   | `TRUST_PROXY` | `false` (leave off for the first deployment) |
-   | `MAX_BODY_BYTES` / `RATE_LIMIT_PER_MINUTE` | `65536` / `120` |
-   | `CLP_CONSULTATION_URL` | leave unset until the real booking link is approved (button stays disabled) |
-   | `ALLOWED_HOSTS` | not needed: Render's `RENDER_EXTERNAL_HOSTNAME` is allowed automatically. Set it only to add extra hostnames (e.g. a custom domain later). |
+Connector URL for AI hosts (the path is required): `https://clp-health-intelligence.vercel.app/mcp`.
 
-4. After deploy, the endpoint is `https://<service>.onrender.com/mcp`.
+Environment variables (Vercel project settings; none are secrets today):
 
-### Pre-push checklist (before creating the repository)
+| Variable | Value |
+|---|---|
+| `TRUST_PROXY` | `false` until trusted client-IP handling is added |
+| `MAX_BODY_BYTES` / `RATE_LIMIT_PER_MINUTE` | `65536` / `120` |
+| `CLP_CONSULTATION_URL` | leave unset until the real booking link is approved (button stays disabled) |
+| `ALLOWED_HOSTS` | not needed for Vercel hostnames (`VERCEL_URL`, `VERCEL_PROJECT_PRODUCTION_URL` and `VERCEL_BRANCH_URL` are allowed automatically). Add a custom domain here later. |
 
-- [ ] No `.env` file exists or is staged (it is git-ignored; only `.env.example` is committed).
+### Pre-push checklist
+
+- [ ] No `.env` file exists or is staged (git-ignored; only `.env.example` is committed).
 - [ ] No real consultation URL, API keys, tokens or passwords in any file.
 - [ ] No patient or real health data anywhere (tests use synthetic values only).
 - [ ] Repository is **private**.
-- [ ] `dist/` and `node_modules/` are not committed (git-ignored).
+- [ ] `dist/`, `node_modules/` and `.vercel/` are not committed (git-ignored).
 
-### Deployment verification checklist (after Render reports "Live")
+### Deployment verification checklist
 
-Replace `H` with `https://<service>.onrender.com`.
+Replace `H` with `https://clp-health-intelligence.vercel.app`.
 
 - [ ] `GET H/health` -> 200 `{"status":"ok","service":"clp-health-intelligence"}`
-- [ ] `initialize` and `tools/list` over `POST H/mcp` succeed; `calculate_egfr` lists `_meta.ui.resourceUri = ui://clp-health-intelligence/egfr.html`
+- [ ] `initialize` and `tools/list` over `POST H/mcp` succeed; each tool lists a `ui://` resource
 - [ ] `calculate_egfr` age 45, male, 1.5 mg/dL -> `58` / `G3a`; 132.6 umol/L -> `58` / `G3a`
 - [ ] age 17 -> `isError: true`, no result
-- [ ] `resources/read` for the `ui://` URI -> mime type `text/html;profile=mcp-app`
+- [ ] `resources/read` for a `ui://` URI -> mime type `text/html;profile=mcp-app`
 - [ ] Foreign `Origin` -> 403; wrong `Content-Type` -> 415; unknown path -> 404
-- [ ] Render logs show only method, MCP method, tool name, status and timing (no health values)
+- [ ] Vercel function logs show only method, MCP method, tool name, status and timing (no health values)
 - [ ] Card renders: `MCP_URL=H/mcp npm run harness`, open http://127.0.0.1:5173/
-- [ ] Only then connect an AI host (Claude first), using synthetic data.
+- [ ] `node scripts/smoke-remote.mjs H` passes
+- [ ] Only then connect an AI host, using synthetic data.
 
-Smoke test with the SDK client (from the project folder):
+### Known points
 
-```bash
-MCP_URL=H/mcp node --input-type=module -e "import {Client,StreamableHTTPClientTransport} from '@modelcontextprotocol/client'; const c=new Client({name:'smoke',version:'0'}); await c.connect(new StreamableHTTPClientTransport(new URL(process.env.MCP_URL))); console.log((await c.listTools()).tools.map(t=>t.name)); const r=await c.callTool({name:'calculate_egfr',arguments:{age:45,sex:'male',creatinine:1.5}}); console.log(r.structuredContent.egfr, r.structuredContent.category); await c.close();"
-```
-
-### Known Render-specific points
-
-- `TRUST_PROXY=false`: all traffic shares one rate-limit bucket (conservative). Proper client-IP handling is deferred.
-- The in-memory rate limiter is per instance and resets on restart; scale beyond one instance later with an outer layer.
-- Starter instances stay up; free instances spin down after idle and may cause slow first requests.
+- `TRUST_PROXY=false`: the in-memory rate limiter cannot identify individual visitors behind the platform proxy. Proper client-IP handling is required before public launch.
+- The rate limiter is per serverless instance and resets on cold start; use a platform-level layer for real abuse protection.

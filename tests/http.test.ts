@@ -32,6 +32,18 @@ function raw(port: number, opts: { method?: string; path?: string; headers?: Rec
 const rpc = (method: string, params?: object, id = 1) => JSON.stringify({ jsonrpc: "2.0", id, method, params });
 const jsonHeaders = { "content-type": "application/json", accept: "application/json, text/event-stream" };
 
+test("Vercel deployment and production hostnames are accepted without allowing other projects", () => {
+  const config = loadHttpConfig({ VERCEL_URL: "clp-preview.vercel.app",
+    VERCEL_PROJECT_PRODUCTION_URL: "clp-health-intelligence.vercel.app",
+    VERCEL_BRANCH_URL: "clp-main.vercel.app" });
+  assert.ok(config.allowedHosts.includes("clp-preview.vercel.app"));
+  assert.ok(config.allowedHosts.includes("clp-health-intelligence.vercel.app"));
+  assert.ok(config.allowedHosts.includes("clp-main.vercel.app"));
+  assert.ok(!config.allowedHosts.includes("other-project.vercel.app"));
+  assert.ok(config.allowedOrigins.includes("clp-health-intelligence.vercel.app"));
+  assert.ok(!config.allowedOrigins.includes("other-project.vercel.app"));
+});
+
 async function connectClient(base: string) {
   const client = new Client({ name: "http-test", version: "0.0.0" });
   await client.connect(new StreamableHTTPClientTransport(new URL(base + "/mcp")));
@@ -203,7 +215,8 @@ test("loadHttpConfig applies localhost-only defaults and validates numbers", () 
   assert.deepEqual(c.allowedHosts, ["localhost", "127.0.0.1", "[::1]"]);
   assert.equal(c.maxBodyBytes, 65536);
   assert.throws(() => loadHttpConfig({ MAX_BODY_BYTES: "abc" }));
-  assert.deepEqual(loadHttpConfig({ RENDER_EXTERNAL_HOSTNAME: "clp.onrender.com" }).allowedHosts, ["localhost", "127.0.0.1", "[::1]", "clp.onrender.com"]);
+  assert.deepEqual(loadHttpConfig({ VERCEL_PROJECT_PRODUCTION_URL: "clp.vercel.app" }).allowedHosts, ["localhost", "127.0.0.1", "[::1]", "clp.vercel.app"]);
+  assert.deepEqual(loadHttpConfig({ RENDER_EXTERNAL_HOSTNAME: "clp.onrender.com" }).allowedHosts, ["localhost", "127.0.0.1", "[::1]"], "Render hostnames are no longer trusted");
   assert.equal(loadHttpConfig({}).trustProxy, false);
   assert.deepEqual(loadHttpConfig({ ALLOWED_HOSTS: "mcp.example.com, other.example.com" }).allowedHosts, ["mcp.example.com", "other.example.com"]);
 });

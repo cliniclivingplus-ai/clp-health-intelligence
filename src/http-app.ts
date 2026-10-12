@@ -4,6 +4,10 @@ import { createMcpHandler, isJsonContentType, type AuthInfo } from "@modelcontex
 import { hostHeaderValidation, originValidation, toNodeHandler } from "@modelcontextprotocol/node";
 import { createServer as createMcpServer } from "./server.js";
 import type { HttpConfig } from "./config.js";
+import { getConsultationUrl } from "./config.js";
+import { getHealthPage } from "./web/pages.js";
+import { runHealthTool } from "./tools/registry.js";
+import { ZodError } from "zod/v4";
 
 /**
  * Stateless Streamable HTTP front end for the MCP server.
@@ -133,7 +137,13 @@ export function createHttpApp(options: HttpAppOptions): { server: Server; close:
         return void res.end(JSON.stringify({ status: "ok", service: "clp-health-intelligence" }));
       }
 
-      if (path !== "/mcp") return jsonRpcError(res, 404, -32000, "Not found.");
+      const page = (req.method === "GET" || req.method === "HEAD") ? getHealthPage(path) : undefined;
+      if (page !== undefined) {
+        res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        return void res.end(req.method === "HEAD" ? undefined : page);
+      }
+      const isCalculation = path === "/api/calculate";
+      if (path !== "/mcp" && !isCalculation) return jsonRpcError(res, 404, -32000, "Not found.");
 
       // DNS-rebinding protection: both guards answer 403 themselves when they return false.
       if (!validateHost(req, res)) return;
@@ -163,6 +173,8 @@ export function createHttpApp(options: HttpAppOptions): { server: Server; close:
         if (auth) (req as IncomingMessage & { auth?: AuthInfo }).auth = auth;
       }
 
+      if (isCalculation && req.method !== "POST") return jsonRpcError(res, 405, -32000, "Method not allowed.", { allow: "POST" });
+
       let parsedBody: unknown;
       if (req.method === "POST") {
         if (!isJsonContentType(req.headers["content-type"])) return jsonRpcError(res, 415, -32000, "Content-Type must be application/json.");
@@ -187,6 +199,31 @@ export function createHttpApp(options: HttpAppOptions): { server: Server; close:
         }
       }
 
+      if (isCalculation) {
+        const body = parsedBody as { tool?: unknown; input?: unknown } | null;
+        if (!body || typeof body !== "object" || Array.isArray(body) || typeof body.tool !== "string") {
+          res.writeHead(400, { "content-type": "application/json" });
+          return void res.end(JSON.stringify({ error: "Select a valid tool and provide its inputs." }));
+        }
+        entry.tool = safeName(body.tool);
+        try {
+          const result = runHealthTool(body.tool, body.input);
+          const url = getConsultationUrl();
+          if (result.cta.show && url) result.cta.url = url;
+          res.writeHead(200, { "content-type": "application/json" });
+          return void res.end(JSON.stringify(result));
+        } catch (error) {
+          const message = error instanceof ZodError
+            ? error.issues.map((issue) => issue.path[0] === "isPregnant"
+              ? "This tool applies outside pregnancy; please confirm your answer."
+              : issue.path[0] === "knownDiabetes"
+                ? "IDRS screens for undiagnosed diabetes and does not apply to known diabetes."
+                : `${issue.path.join(".")}: ${issue.message}`).join("; ")
+            : error instanceof Error ? error.message : "Unable to calculate. Check the inputs.";
+          res.writeHead(400, { "content-type": "application/json" });
+          return void res.end(JSON.stringify({ error: message }));
+        }
+      }
       await handleMcp(req, res, parsedBody);
     } catch (error) {
       onError(error instanceof Error ? error : new Error("Unknown error"));

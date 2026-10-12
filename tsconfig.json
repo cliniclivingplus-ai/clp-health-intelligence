@@ -11,6 +11,7 @@
     ]
   },
   "include": [
+    "api/**/*.ts",
     "src/**/*.ts",
     "tests/**/*.ts",
     "ui-src/**/*.ts",

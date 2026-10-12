@@ -2,6 +2,7 @@
 // written to src/tools/egfr/ui.generated.ts. Run: npm run build:ui
 import { build } from "esbuild";
 import { readFileSync, writeFileSync } from "node:fs";
+import "./build-health-ui.mjs";
 
 const result = await build({
   entryPoints: ["ui-src/egfr-app.ts"],

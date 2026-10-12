@@ -61,7 +61,7 @@ test("server-level instructions are sent on initialize", async () => {
 });
 
 test("parameter descriptions carry required / do-not-guess / do-not-convert guidance", async () => {
-  const props = (await rpc("tools/list")).result.tools[0].inputSchema.properties;
+  const props = (await rpc("tools/list")).result.tools.find((t: any) => t.name === "calculate_egfr").inputSchema.properties;
   has(props.age.description, "do not guess");
   has(props.sex.description, "do not guess");
   has(props.creatinine.description, "do not convert");
@@ -71,7 +71,7 @@ test("parameter descriptions carry required / do-not-guess / do-not-convert guid
 });
 
 test("input contract: adults only, creatinineUnit is required with no default", async () => {
-  const schema = (await rpc("tools/list")).result.tools[0].inputSchema;
+  const schema = (await rpc("tools/list")).result.tools.find((t: any) => t.name === "calculate_egfr").inputSchema;
   assert.equal(schema.properties.age.minimum, 18);
   assert.equal(schema.properties.age.maximum, 120);
   assert.deepEqual(schema.required, ["age", "sex", "creatinine", "creatinineUnit"]);
@@ -88,7 +88,7 @@ test("a call without creatinineUnit is rejected and never calculates", async () 
 });
 
 test("annotations: read-only, idempotent, closed world; UI link intact", async () => {
-  const tool = (await rpc("tools/list")).result.tools[0];
+  const tool = (await rpc("tools/list")).result.tools.find((t: any) => t.name === "calculate_egfr");
   assert.equal(tool.annotations.readOnlyHint, true);
   assert.equal(tool.annotations.idempotentHint, true);
   assert.equal(tool.annotations.openWorldHint, false);

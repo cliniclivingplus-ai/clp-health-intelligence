@@ -37,10 +37,11 @@ function positiveInt(name: string, value: string | undefined, fallback: number):
   return n;
 }
 
-/** Render injects the service hostname; allow it automatically so a first deployment needs no manual host entry. */
+/** Allow exact hostnames supplied by Vercel, without trusting arbitrary Host headers. */
 function withPlatformHost(hosts: string[], env: NodeJS.ProcessEnv): string[] {
-  const platformHost = env.RENDER_EXTERNAL_HOSTNAME?.trim().toLowerCase();
-  return platformHost && !hosts.includes(platformHost) ? [...hosts, platformHost] : hosts;
+  const platformHosts = [env.VERCEL_URL, env.VERCEL_PROJECT_PRODUCTION_URL,
+    env.VERCEL_BRANCH_URL].map((host) => host?.trim().toLowerCase()).filter((host): host is string => !!host);
+  return [...new Set([...hosts, ...platformHosts])];
 }
 
 /** Reads HTTP settings from environment variables. Defaults are localhost-only. */
@@ -51,7 +52,7 @@ export function loadHttpConfig(env: NodeJS.ProcessEnv = process.env): HttpConfig
     port,
     host: env.HOST?.trim() || "127.0.0.1",
     allowedHosts: withPlatformHost(list(env.ALLOWED_HOSTS, LOCALHOST_NAMES), env),
-    allowedOrigins: list(env.ALLOWED_ORIGINS, LOCALHOST_NAMES),
+    allowedOrigins: withPlatformHost(list(env.ALLOWED_ORIGINS, LOCALHOST_NAMES), env),
     maxBodyBytes: positiveInt("MAX_BODY_BYTES", env.MAX_BODY_BYTES, 65536),
     rateLimitPerMinute: positiveInt("RATE_LIMIT_PER_MINUTE", env.RATE_LIMIT_PER_MINUTE, 120),
     trustProxy: env.TRUST_PROXY === "true"
